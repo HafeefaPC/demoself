@@ -48,12 +48,14 @@ export async function POST(req: Request) {
     });
 
 
-    // For offchain verification, we validate the proof structure
+    // For real offchain verification, we validate the proof structure
     if (!proof || typeof proof !== 'object') {
+      console.log('❌ Invalid proof structure received:', { proof, type: typeof proof });
+      
       return new Response(JSON.stringify({
         status: 'error',
         result: false,
-        reason: 'Invalid proof structure',
+        reason: 'Invalid proof structure - proof is null or not an object. Please ensure the Self mobile app can connect to your endpoint.',
         error_code: SelfProtocolError.VERIFICATION_FAILED,
         timestamp: new Date().toISOString()
       }), {
@@ -62,28 +64,62 @@ export async function POST(req: Request) {
       });
     }
 
-    // Check if we have credential subject data (this indicates successful verification)
-    if (proof.credentialSubject && typeof proof.credentialSubject === 'object') {
-      console.log('✅ Offchain Aadhaar verification successful');
+    // Extract credential subject from various possible proof structures
+    let credentialSubject = null;
+    
+    // Check different possible structures for credential subject
+    if (proof.credentialSubject) {
+      credentialSubject = proof.credentialSubject;
+    } else if (proof.data && proof.data.credentialSubject) {
+      credentialSubject = proof.data.credentialSubject;
+    } else if (proof.result && proof.result.credentialSubject) {
+      credentialSubject = proof.result.credentialSubject;
+    } else if (proof.discloseOutput) {
+      credentialSubject = proof.discloseOutput;
+    } else if (proof.credential && proof.credential.credentialSubject) {
+      credentialSubject = proof.credential.credentialSubject;
+    }
+
+    console.log('🔍 Extracted credential subject:', { 
+      credentialSubject, 
+      proofKeys: Object.keys(proof),
+      hasCredentialSubject: !!credentialSubject 
+    });
+
+    // Check if we have valid credential subject data
+    if (credentialSubject && typeof credentialSubject === 'object' && Object.keys(credentialSubject).length > 0) {
+      console.log('✅ Real Aadhaar verification successful with actual user data');
       
       return new Response(JSON.stringify({
         status: 'success',
         result: true,
-        credentialSubject: proof.credentialSubject,
+        credentialSubject: credentialSubject,
         documentType: attestationId === DocumentType.AADHAAR ? 'Aadhaar' : 'Other',
         timestamp: new Date().toISOString(),
-        attestationId: attestationId
+        attestationId: attestationId,
+        proofSource: 'real_self_protocol'
       }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
       });
     } else {
+      console.log('❌ No valid credential subject found in proof:', { 
+        proof, 
+        credentialSubject,
+        proofStructure: typeof proof,
+        proofKeys: Object.keys(proof || {})
+      });
+      
       return new Response(JSON.stringify({
         status: 'error',
         result: false,
-        reason: 'Aadhaar verification failed - no credential subject found',
+        reason: 'Aadhaar verification failed - no valid credential subject found. The Self mobile app may not have generated a proper proof.',
         error_code: SelfProtocolError.VERIFICATION_FAILED,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        debug: {
+          proofKeys: Object.keys(proof || {}),
+          hasCredentialSubject: !!credentialSubject
+        }
       }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }

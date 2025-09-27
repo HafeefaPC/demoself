@@ -42,7 +42,7 @@ export const useSelfProtocol = (
       setError(null);
       setIsInitialized(false);
       
-      // Get endpoint from environment
+      // Get endpoint from environment - use real verification endpoint
       const endpoint = process.env.NEXT_PUBLIC_SELF_ENDPOINT || 'https://demoself-jet.vercel.app/api/verify';
       
       // Validate endpoint before proceeding
@@ -131,7 +131,7 @@ export const useSelfProtocol = (
         },
         body: JSON.stringify({
           attestationId: DocumentType.AADHAAR, // Aadhaar document type
-          proof: proof.proof || proof,
+          proof: proof, // Pass the entire proof object as received from Self Protocol
           publicSignals: proof.publicSignals || [],
           userContextData: proof.userContextData || '0x0',
           sessionId: sessionId

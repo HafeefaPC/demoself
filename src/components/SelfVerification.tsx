@@ -109,6 +109,8 @@ export default function SelfVerification({ onSuccess, onError }: SelfVerificatio
             selfApp={selfApp}
             onSuccess={() => {
               console.log('QR Code Success - verification completed');
+              // The SelfQRcodeWrapper handles the proof internally
+              // We'll get the proof data through the selfApp state
               handleVerificationSuccess({});
             }}
             onError={() => {
