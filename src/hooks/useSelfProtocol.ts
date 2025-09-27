@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { SelfAppBuilder, SelfQRcodeWrapper } from '@selfxyz/qrcode';
+import { SelfAppBuilder } from '@selfxyz/qrcode';
+import { ethers } from 'ethers';
 import { generateSessionId, generateUserId, createAppLogo, logVerificationEvent, sanitizeForLogging, validateSelfConfig, validateEndpoint, getNgrokSetupInstructions, isDevelopmentTunnel } from '@/utils/selfProtocol';
 import { DocumentType } from '@/types/selfProtocol';
 
@@ -42,7 +43,7 @@ export const useSelfProtocol = (
       setIsInitialized(false);
       
       // Get endpoint from environment
-      const endpoint = process.env.NEXT_PUBLIC_SELF_ENDPOINT || 'https://demoself.loca.lt/api/verify';
+      const endpoint = process.env.NEXT_PUBLIC_SELF_ENDPOINT || 'https://demoself-jet.vercel.app/api/verify';
       
       // Validate endpoint before proceeding
       const endpointValidation = validateEndpoint(endpoint);
@@ -57,10 +58,11 @@ export const useSelfProtocol = (
       // Create app logo
       const logoBase64 = createAppLogo();
 
-      // Generate user ID
-      const userId = generateUserId();
+      // Generate user ID - use ethers wallet for proper address generation
+      const wallet = ethers.Wallet.createRandom();
+      const userId = wallet.address;
       
-      // Prepare configuration
+      // Prepare configuration for offchain verification (based on workshop)
       const config = {
         version: 2,
         appName: process.env.NEXT_PUBLIC_SELF_APP_NAME || 'Aadhaar KYC Verification',
@@ -69,7 +71,7 @@ export const useSelfProtocol = (
         logoBase64: logoBase64,
         userId: userId,
         endpointType: 'staging_https' as const,
-        userIdType: 'uuid' as const,
+        userIdType: 'hex' as const,
         userDefinedData: 'Aadhaar KYC Verification',
         disclosures: {
           minimumAge: 18,
@@ -78,6 +80,8 @@ export const useSelfProtocol = (
           name: true,
           date_of_birth: true,
         },
+        // Add chainId for offchain verification (from workshop)
+        chainId: 42220, // Celo chain ID
       };
       
       // Validate complete configuration

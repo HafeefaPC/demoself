@@ -26,7 +26,6 @@ export default function SelfVerification({ onSuccess, onError }: SelfVerificatio
     initializeSelfApp();
   }, [initializeSelfApp]);
 
-
   if (error) {
     return (
       <div className="text-center p-6">
@@ -108,8 +107,14 @@ export default function SelfVerification({ onSuccess, onError }: SelfVerificatio
         <div className="mb-6">
           <SelfQRcodeWrapper
             selfApp={selfApp}
-            onSuccess={() => handleVerificationSuccess({})}
-            onError={() => handleVerificationError({ message: 'QR code verification failed' })}
+            onSuccess={() => {
+              console.log('QR Code Success - verification completed');
+              handleVerificationSuccess({});
+            }}
+            onError={() => {
+              console.log('QR Code Error - verification failed');
+              handleVerificationError({ message: 'QR code verification failed' });
+            }}
           />
         </div>
       )}

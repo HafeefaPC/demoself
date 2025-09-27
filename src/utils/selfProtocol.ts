@@ -85,9 +85,20 @@ export const generateSessionId = (): string => {
 
 /**
  * Generates a secure user ID for Self Protocol
+ * Returns a hex address for userIdType: 'hex' or UUID for userIdType: 'uuid'
  */
-export const generateUserId = (): string => {
-  return crypto.randomUUID();
+export const generateUserId = (userIdType: 'hex' | 'uuid' = 'hex'): string => {
+  if (userIdType === 'hex') {
+    // Generate a random hex address (40 characters starting with 0x)
+    const randomBytes = new Uint8Array(20);
+    crypto.getRandomValues(randomBytes);
+    const hex = Array.from(randomBytes)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    return '0x' + hex;
+  } else {
+    return crypto.randomUUID();
+  }
 };
 
 /**
