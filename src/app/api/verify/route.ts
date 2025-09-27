@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from '@selfxyz/core';
+import { DocumentType, SelfProtocolError } from '@/types/selfProtocol';
 
-// Initialize Self Backend Verifier for Aadhaar verification
+// Initialize Self Backend Verifier for Aadhaar verification (offchain)
 const selfBackendVerifier = new SelfBackendVerifier(
   'aadhaar-verification', // scope
   process.env.NEXT_PUBLIC_SELF_ENDPOINT || 'https://your-backend-url.com/api/verify', // endpoint
@@ -12,7 +13,7 @@ const selfBackendVerifier = new SelfBackendVerifier(
     excludedCountries: [], // Add countries to exclude if needed
     ofac: false, // Set to true to check OFAC sanctions list
   }),
-  'uuid' // userIdentifierType
+  'uuid' // userIdentifierType - correct for offchain verification
 );
 
 export async function POST(req: Request) {
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
       });
     }
 
-    const { attestationId, proof, publicSignals, userContextData } = requestData;
+    const { attestationId, proof, publicSignals, userContextData, sessionId } = requestData;
 
     // Validate required fields
     if (!proof || !publicSignals || !attestationId || !userContextData) {
@@ -54,27 +55,45 @@ export async function POST(req: Request) {
 
     console.log('Verifying Aadhaar proof:', { 
       attestationId, 
-      documentType: attestationId === 3 ? 'Aadhaar' : 'Other',
-      userContextData 
+      documentType: attestationId === DocumentType.AADHAAR ? 'Aadhaar' : 'Other',
+      userContextData,
+      sessionId,
+      proofStructure: typeof proof,
+      hasCredentialSubject: !!proof?.credentialSubject
     });
 
-    // Verify the proof using Self Backend Verifier
+    // Validate that we have real proof data, not mock data
+    if (proof?.credentialSubject && !proof.proof && !proof.publicSignals) {
+      console.log('Received mock data instead of real proof - this indicates a tunnel/connection issue');
+      return new Response(JSON.stringify({
+        status: 'error',
+        result: false,
+        reason: 'Tunnel connection failed - received mock data instead of real proof. Please ensure your endpoint is accessible.',
+        error_code: SelfProtocolError.TUNNEL_CONNECTION_FAILED,
+        timestamp: new Date().toISOString()
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Verify the proof using Self Backend Verifier (offchain) for real proofs
     // attestationId: 1 = passport, 2 = EU ID card, 3 = Aadhaar
-    const result = await selfBackendVerifier.verify(
+    const verificationResult = await selfBackendVerifier.verify(
       attestationId,
       proof,
       publicSignals,
       userContextData
     );
 
-    console.log('Aadhaar verification result:', result);
+    console.log('Aadhaar verification result:', verificationResult);
 
-    // Check if verification is valid
-    if (result.isValidDetails.isValid) {
+    // Check if verification is valid (original verify method structure)
+    if (verificationResult.isValidDetails.isValid) {
       return new Response(JSON.stringify({
         status: 'success',
         result: true,
-        credentialSubject: result.discloseOutput,
+        credentialSubject: verificationResult.discloseOutput,
         documentType: attestationId === 3 ? 'Aadhaar' : 'Other',
         timestamp: new Date().toISOString(),
         attestationId: attestationId
@@ -88,7 +107,7 @@ export async function POST(req: Request) {
         result: false,
         reason: 'Aadhaar verification failed',
         error_code: 'VERIFICATION_FAILED',
-        details: result.isValidDetails,
+        details: verificationResult.isValidDetails,
         timestamp: new Date().toISOString()
       }), {
         status: 200,
