@@ -8,8 +8,8 @@
     "start": "next start"
   },
   "dependencies": {
-    "@selfxyz/core": "^1.1.0-beta.6",
-    "@selfxyz/qrcode": "^1.0.15",
+    "@selfxyz/core": "^1.0.8",
+    "@selfxyz/qrcode": "^1.0.11",
     "ethers": "^6.15.0",
     "next": "15.5.4",
     "react": "19.1.0",

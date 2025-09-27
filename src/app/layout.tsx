@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Self Protocol - Aadhaar KYC Verification",
-  description: "Privacy-preserving Aadhaar verification using Self Protocol zero-knowledge proofs",
+  title: "Aadhaar Verification App",
+  description: "Verify Aadhaar identity using Self Offchain SDK",
 };
 
 export default function RootLayout({
