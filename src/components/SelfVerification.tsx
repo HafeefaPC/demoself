@@ -7,9 +7,11 @@ import { useSelfProtocol } from '@/hooks/useSelfProtocol';
 interface SelfVerificationProps {
   onSuccess: (proof: any) => void;
   onError: (error: any) => void;
+  extractedAadhaarData?: any;
+  sessionId?: string | null;
 }
 
-export default function SelfVerification({ onSuccess, onError }: SelfVerificationProps) {
+export default function SelfVerification({ onSuccess, onError, extractedAadhaarData, sessionId: propSessionId }: SelfVerificationProps) {
   const {
     selfApp,
     isInitialized,
@@ -20,7 +22,7 @@ export default function SelfVerification({ onSuccess, onError }: SelfVerificatio
     handleVerificationSuccess,
     handleVerificationError,
     resetState
-  } = useSelfProtocol(onSuccess, onError);
+  } = useSelfProtocol(onSuccess, onError, extractedAadhaarData, propSessionId);
 
   useEffect(() => {
     initializeSelfApp();
@@ -47,20 +49,27 @@ export default function SelfVerification({ onSuccess, onError }: SelfVerificatio
           </div>
         )}
 
-        {(error.includes('Tunnel Unavailable') || error.includes('503') || error.includes('Tunnel connection failed')) && (
+        {(error.includes('Tunnel Unavailable') || error.includes('503') || error.includes('Tunnel connection failed') || error.includes('no valid credential subject found')) && (
           <div className="bg-red-100 border border-red-300 p-4 mb-4 text-left">
-            <h4 className="font-semibold text-red-800 mb-2">⚠️ Tunnel Connection Required</h4>
+            <h4 className="font-semibold text-red-800 mb-2">⚠️ Self Mobile App Connection Issue</h4>
             <p className="text-sm text-red-700 mb-2">
-              <strong>Self Protocol requires a stable HTTPS endpoint.</strong> The current tunnel connection is not working.
+              <strong>The Self mobile app cannot connect to your endpoint.</strong> This prevents proof generation.
             </p>
             <p className="text-sm text-red-700 mb-2">
-              To fix this, you need to set up a proper tunnel or deploy to a real HTTPS endpoint.
+              <strong>Common causes:</strong>
             </p>
+            <ul className="text-xs text-red-600 mt-2 list-disc list-inside">
+              <li>Vercel deployment protection is enabled</li>
+              <li>Endpoint is not accessible from mobile networks</li>
+              <li>Network firewall blocking the connection</li>
+              <li>Self Protocol configuration mismatch</li>
+            </ul>
             <div className="text-xs text-red-600 mt-2">
-              <strong>Setup Options:</strong><br/>
-              1. Use ngrok: <code>ngrok http 3000</code><br/>
-              2. Deploy to Vercel/Netlify<br/>
-              3. Update .env.local with stable HTTPS URL
+              <strong>Solutions:</strong><br/>
+              1. <strong>Use ngrok:</strong> <code>ngrok http 3000</code> then update endpoint<br/>
+              2. <strong>Disable Vercel protection</strong> in dashboard<br/>
+              3. <strong>Use local network IP:</strong> <code>http://192.168.1.8:3000/api/verify</code><br/>
+              4. <strong>Check network connectivity</strong> between mobile and server
             </div>
           </div>
         )}
@@ -96,11 +105,11 @@ export default function SelfVerification({ onSuccess, onError }: SelfVerificatio
 
   return (
     <div className="text-center p-6">
-      <h3 className="text-lg font-semibold mb-4">Aadhaar KYC Verification</h3>
-      
-      <p className="text-sm mb-6">
-        Scan QR code with Self mobile app to verify your Aadhaar
-      </p>
+          <h3 className="text-lg font-semibold mb-4">Aadhaar QR Code Verification</h3>
+          
+          <p className="text-sm mb-6">
+            Scan QR code with Self mobile app, then scan your Aadhaar QR code
+          </p>
 
       {/* Real Self QR Code Component */}
       {selfApp && (
@@ -121,17 +130,23 @@ export default function SelfVerification({ onSuccess, onError }: SelfVerificatio
         </div>
       )}
 
-      {/* Instructions */}
-      <div className="border border-black p-4 mb-6 text-left">
-        <h4 className="font-semibold mb-2">Verification Process:</h4>
-        <ol className="text-sm space-y-1">
-          <li>1. Download Self mobile app</li>
-          <li>2. Scan QR code above</li>
-          <li>3. Scan your Aadhaar card NFC chip</li>
-          <li>4. Select attributes to share</li>
-          <li>5. Complete verification</li>
-        </ol>
-      </div>
+          {/* Instructions */}
+            <div className="border border-black p-4 mb-6 text-left">
+              <h4 className="font-semibold mb-2">Aadhaar QR Verification Process:</h4>
+              <ol className="text-sm space-y-1">
+                <li>1. Download Self mobile app (iOS/Android)</li>
+                <li>2. Scan QR code above with Self app</li>
+                <li>3. <strong>Scan your PHYSICAL Aadhaar QR code</strong> (from e-Aadhaar PDF or printed sheet)</li>
+                <li>4. Select attributes to share (name, DOB, etc.)</li>
+                <li>5. Complete zero-knowledge verification</li>
+              </ol>
+              <div className="mt-3 p-2 bg-yellow-100 border border-yellow-300 rounded">
+                <p className="text-xs text-yellow-800">
+                  <strong>Important:</strong> The uploaded document is NOT processed. 
+                  You must scan your PHYSICAL Aadhaar QR code with the mobile app to get real data.
+                </p>
+              </div>
+            </div>
 
       {/* Info */}
       <div className="text-xs text-gray-500">

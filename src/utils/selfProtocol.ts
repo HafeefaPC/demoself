@@ -14,24 +14,40 @@ export const validateEndpoint = (endpoint: string): { isValid: boolean; error?: 
   try {
     const url = new URL(endpoint);
     
-    // Check if it's localhost or private IP
+    // Allow local network IPs for development (192.168.x.x)
     if (url.hostname === 'localhost' || 
         url.hostname === '127.0.0.1' || 
-        url.hostname === '0.0.0.0' ||
-        url.hostname.startsWith('192.168.') ||
-        url.hostname.startsWith('10.') ||
-        url.hostname.startsWith('172.')) {
+        url.hostname === '0.0.0.0') {
       return { 
         isValid: false, 
-        error: 'Endpoint must be publicly accessible. localhost and private IPs are not allowed.' 
+        error: 'Endpoint must be publicly accessible. localhost is not allowed.' 
       };
     }
 
-    // Check if it's HTTPS
+    // For local network IPs (192.168.x.x), allow HTTP for development
+    if (url.hostname.startsWith('192.168.')) {
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        return { 
+          isValid: false, 
+          error: 'Local network endpoint must use HTTP or HTTPS protocol.' 
+        };
+      }
+      return { isValid: true };
+    }
+
+    // For other private IPs and public endpoints, require HTTPS
+    if (url.hostname.startsWith('10.') || url.hostname.startsWith('172.')) {
+      return { 
+        isValid: false, 
+        error: 'Endpoint must be publicly accessible or use 192.168.x.x for local development.' 
+      };
+    }
+
+    // Check if it's HTTPS for public endpoints
     if (url.protocol !== 'https:') {
       return { 
         isValid: false, 
-        error: 'Endpoint must use HTTPS protocol.' 
+        error: 'Public endpoint must use HTTPS protocol.' 
       };
     }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SelfVerification from '@/components/SelfVerification';
 
@@ -13,6 +13,15 @@ interface AadhaarDetails {
   minimumAge?: boolean;
   aadhaarVerified?: boolean;
   kycCompleted?: boolean;
+  aadhaarNumber?: string;
+  address?: string;
+  state?: string;
+  district?: string;
+  pincode?: string;
+  country?: string;
+  age?: number;
+  yob?: number;
+  fullAddress?: string;
 }
 
 export default function VerifyPage() {
@@ -22,7 +31,30 @@ export default function VerifyPage() {
     error?: string;
   } | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [extractedAadhaarData, setExtractedAadhaarData] = useState<any>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const router = useRouter();
+
+  // Load extracted Aadhaar data from localStorage
+  useEffect(() => {
+    const storedData = localStorage.getItem('extractedAadhaarData');
+    const storedSessionId = localStorage.getItem('verificationSessionId');
+    
+    if (storedData) {
+      try {
+        const parsedData = JSON.parse(storedData);
+        setExtractedAadhaarData(parsedData);
+        setSessionId(storedSessionId);
+        console.log('✅ Loaded extracted Aadhaar data:', parsedData);
+      } catch (error) {
+        console.error('❌ Failed to parse stored Aadhaar data:', error);
+        router.push('/');
+      }
+    } else {
+      console.log('❌ No extracted Aadhaar data found, redirecting to home');
+      router.push('/');
+    }
+  }, [router]);
 
   const handleVerificationSuccess = (result: any) => {
     setIsVerifying(true);
@@ -68,11 +100,42 @@ export default function VerifyPage() {
 
           {/* Main Content */}
           <div className="border border-black p-6">
-            {!verificationResult && !isVerifying && (
-              <SelfVerification
-                onSuccess={handleVerificationSuccess}
-                onError={handleVerificationError}
-              />
+            {!verificationResult && !isVerifying && extractedAadhaarData && (
+              <>
+                {/* Show extracted Aadhaar data */}
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded">
+                  <h3 className="font-semibold text-green-800 mb-2">✅ Real Aadhaar Data Extracted from QR Code:</h3>
+                  <div className="text-sm text-green-700 space-y-1">
+                    <div><strong>Name:</strong> {extractedAadhaarData.name}</div>
+                    <div><strong>DOB:</strong> {extractedAadhaarData.dateOfBirth}</div>
+                    <div><strong>Gender:</strong> {extractedAadhaarData.gender === 'M' ? 'Male' : 'Female'}</div>
+                    <div><strong>Age:</strong> {extractedAadhaarData.age} years</div>
+                    <div><strong>Aadhaar:</strong> ****{extractedAadhaarData.aadhaarNumber?.slice(-4)}</div>
+                    <div><strong>Address:</strong> {extractedAadhaarData.address}</div>
+                    <div><strong>State:</strong> {extractedAadhaarData.state}</div>
+                    <div><strong>District:</strong> {extractedAadhaarData.district}</div>
+                    <div><strong>Pincode:</strong> {extractedAadhaarData.pincode}</div>
+                    <div><strong>Country:</strong> {extractedAadhaarData.country}</div>
+                  </div>
+                  <p className="text-xs text-green-600 mt-2">
+                    ✅ This is REAL data extracted from your uploaded Aadhaar QR code (no dummy data)
+                  </p>
+                </div>
+
+                <SelfVerification
+                  onSuccess={handleVerificationSuccess}
+                  onError={handleVerificationError}
+                  extractedAadhaarData={extractedAadhaarData}
+                  sessionId={sessionId}
+                />
+              </>
+            )}
+
+            {!extractedAadhaarData && (
+              <div className="text-center p-6">
+                <h3 className="text-lg font-semibold mb-2">Loading...</h3>
+                <p className="text-gray-600">Loading extracted Aadhaar data...</p>
+              </div>
             )}
 
             {isVerifying && (
@@ -88,6 +151,11 @@ export default function VerifyPage() {
                 {verificationResult.status === 'success' ? (
                   <div>
                     <h2 className="text-xl font-bold text-green-600 mb-4">✓ Verification Successful</h2>
+                    <div className="mb-4 p-3 bg-green-100 border border-green-300 rounded">
+                      <p className="text-sm text-green-800">
+                        ✅ <strong>Real Aadhaar data verified!</strong> The information below is from your uploaded Aadhaar QR code, no dummy data.
+                      </p>
+                    </div>
                     
                     {verificationResult.details && (
                       <div className="border border-black p-4 mb-6 text-left">
@@ -127,9 +195,51 @@ export default function VerifyPage() {
                               <span className="font-medium text-green-600">✓ 18+ Verified</span>
                             </div>
                           )}
+                          {verificationResult.details.aadhaarNumber && (
+                            <div className="flex justify-between">
+                              <span>Aadhaar Number:</span>
+                              <span className="font-medium">****{verificationResult.details.aadhaarNumber.slice(-4)}</span>
+                            </div>
+                          )}
+                          {verificationResult.details.address && (
+                            <div className="flex justify-between">
+                              <span>Address:</span>
+                              <span className="font-medium text-right max-w-48 truncate">{verificationResult.details.address}</span>
+                            </div>
+                          )}
+                          {verificationResult.details.state && (
+                            <div className="flex justify-between">
+                              <span>State:</span>
+                              <span className="font-medium">{verificationResult.details.state}</span>
+                            </div>
+                          )}
+                          {verificationResult.details.district && (
+                            <div className="flex justify-between">
+                              <span>District:</span>
+                              <span className="font-medium">{verificationResult.details.district}</span>
+                            </div>
+                          )}
+                          {verificationResult.details.pincode && (
+                            <div className="flex justify-between">
+                              <span>Pincode:</span>
+                              <span className="font-medium">{verificationResult.details.pincode}</span>
+                            </div>
+                          )}
+                          {verificationResult.details.country && (
+                            <div className="flex justify-between">
+                              <span>Country:</span>
+                              <span className="font-medium">{verificationResult.details.country}</span>
+                            </div>
+                          )}
+                          {verificationResult.details.age && (
+                            <div className="flex justify-between">
+                              <span>Age:</span>
+                              <span className="font-medium">{verificationResult.details.age} years</span>
+                            </div>
+                          )}
                           {verificationResult.details.aadhaarVerified && (
                             <div className="flex justify-between">
-                              <span>Aadhaar:</span>
+                              <span>Aadhaar Status:</span>
                               <span className="font-medium text-green-600">✓ Verified</span>
                             </div>
                           )}
